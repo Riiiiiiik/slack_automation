@@ -106,6 +106,14 @@ HISTORY_FILE = "history.json"
 
 class DailyReporter:
     def __init__(self, webhook_url, gemini_api_key=None):
+        # Force UTF-8 for Windows console
+        import sys
+        if sys.platform == 'win32':
+            try:
+                sys.stdout.reconfigure(encoding='utf-8')
+            except:
+                pass
+        
         self.webhook_url = webhook_url
         self.tz_BR = pytz.timezone('America/Sao_Paulo')
         self.history = self.load_history()
@@ -256,7 +264,7 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": f"📅 *{current_time}* | Resumos gerados por IA 🤖"
+                        "text": f"📅 *{current_time}* | Resumos"
                     }
                 ]
             },
@@ -271,7 +279,7 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*<{article['link']}|{article['title']}>*\n_{article['source']}_\n\n{summary}"
+                    "text": f"*<{article['link']}|{article['title']}>*\n\n_{article['source']}_\n\n{summary}"
                 }
             })
             blocks.append({"type": "divider"})
