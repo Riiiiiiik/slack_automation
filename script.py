@@ -122,10 +122,8 @@ class DailyReporter:
         self.gemini_api_key = gemini_api_key
         if self.gemini_api_key:
             genai.configure(api_key=self.gemini_api_key)
-            try:
-                self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
-            except:
-                self.model = genai.GenerativeModel('gemini-pro')
+            # Usando gemini-pro que é mais estável universalmente
+            self.model = genai.GenerativeModel('gemini-pro')
             print("✅ Gemini API configurada com sucesso!")
         else:
             self.model = None
@@ -185,7 +183,7 @@ class DailyReporter:
             # Try to fetch full article content
             content = self.fetch_article_content(article['link'])
             
-            # If fetch fails, use the RSS summary as context (better than nothing)
+            # If fetch fails, use the RSS summary as context
             if not content:
                 print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo do RSS para gerar IA.")
                 content = article.get('summary', '')
@@ -195,11 +193,9 @@ class DailyReporter:
 
             # Create prompt for Gemini
             prompt = f"""Você é um especialista em filosofia e cultura. 
-Analise o texto abaixo (que pode ser um artigo completo ou um resumo) e faça o seguinte:
-
+Analise o texto abaixo e faça o seguinte:
 1. Gere um resumo explicativo em Português Brasileiro.
-2. Se o texto for curto, traduza e expanda com base no seu conhecimento.
-3. Mantenha o tom sofisticado mas acessível.
+2. Mantenha o tom sofisticado mas acessível.
 
 Título: {article['title']}
 Fonte: {article['source']}
@@ -215,7 +211,8 @@ Resumo em Português:"""
             
         except Exception as e:
             print(f"   ⚠️ Erro ao gerar resumo com Gemini: {e}")
-            return article.get('summary', 'Sem resumo disponível')
+            # Retorna o erro visível para debug
+            return f"{article.get('summary', '')}\n\n⚠️ *Erro IA:* {str(e)}"
 
     def collect_data(self):
         # Get current day of week (0=Monday, 6=Sunday)
