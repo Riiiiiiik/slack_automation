@@ -1,6 +1,6 @@
 # 🧠 Curadoria Temática Semanal com IA 🤖
 
-Este projeto é uma automação que roda todos os dias às **07:30 (Horário de Brasília)**, busca artigos sobre **temas diferentes para cada dia da semana**, **usa IA (Google Gemini) para gerar resumos em português**, e envia 2 destaques para o seu Slack.
+Este projeto é uma automação que roda todos os dias às **07:30 (Horário de Brasília)**, busca artigos sobre **temas diferentes para cada dia da semana**, **usa IA (Perplexity ou Google Gemini) para gerar resumos em português**, e envia 2 destaques para o seu Slack.
 
 ## 📅 Calendário Semanal
 
@@ -20,9 +20,10 @@ Cada dia da semana tem um tema diferente:
 ### 🤖 Resumos Gerados por IA
 O bot não envia apenas snippets dos feeds RSS. Ele:
 - 📖 Lê o artigo completo
-- 🤖 Usa o Google Gemini para gerar um resumo inteligente
+- 🔮 Usa **Perplexity AI** (preferencial) ou **Google Gemini** (fallback) para gerar resumos inteligentes
 - 🇧🇷 Traduz e adapta para Português Brasileiro
 - 💡 Destaca os conceitos principais de cada tema
+- 🔄 Sistema de fallback automático entre APIs para máxima confiabilidade
 
 ## 🚀 Como colocar no ar
 
@@ -51,9 +52,9 @@ git push -u origin main
 *(Substitua `SEU_USUARIO` pelo seu nome de usuário do GitHub)*
 
 ### Passo 4: Configurar os Segredos (Secrets)
-Para que o GitHub Actions consiga enviar mensagens e gerar resumos com IA, você precisa configurar 2 secrets:
+Para que o GitHub Actions consiga enviar mensagens e gerar resumos com IA, você precisa configurar os seguintes secrets:
 
-#### 4.1 - SLACK_WEBHOOK_URL
+#### 4.1 - SLACK_WEBHOOK_URL (Obrigatório)
 1. No seu repositório no GitHub, vá em **Settings** (aba superior).
 2. No menu lateral esquerdo, clique em **Secrets and variables** > **Actions**.
 3. Clique no botão verde **New repository secret**.
@@ -61,7 +62,18 @@ Para que o GitHub Actions consiga enviar mensagens e gerar resumos com IA, você
 5. **Secret**: Cole a URL do Webhook do Slack (aquela do Passo 1).
 6. Clique em **Add secret**.
 
-#### 4.2 - GEMINI_API_KEY (para resumos com IA)
+#### 4.2 - PERPLEXITY_API_KEY (Opcional - Recomendado)
+A Perplexity AI é usada preferencialmente para gerar resumos de alta qualidade:
+1. Acesse: https://www.perplexity.ai/settings/api
+2. Faça login e crie uma API key
+3. Copie a chave gerada
+4. No GitHub, clique em **New repository secret**
+5. **Name**: `PERPLEXITY_API_KEY`
+6. **Secret**: Cole a API key da Perplexity
+7. Clique em **Add secret**
+
+#### 4.3 - GEMINI_API_KEY (Opcional - Fallback)
+O Gemini é usado como fallback caso a Perplexity não esteja configurada ou falhe:
 1. Acesse: https://aistudio.google.com/app/apikey
 2. Faça login com sua conta Google
 3. Clique em **"Create API Key"** e copie a chave
@@ -70,6 +82,9 @@ Para que o GitHub Actions consiga enviar mensagens e gerar resumos com IA, você
 6. **Secret**: Cole a API key do Gemini
 7. Clique em **Add secret**
 
+> **💡 Dica**: Configure pelo menos uma das APIs de IA (Perplexity ou Gemini) para obter resumos inteligentes. Se nenhuma estiver configurada, o bot enviará apenas os resumos originais do RSS.
+
+📖 **[Guia completo de configuração da Perplexity](PERPLEXITY_SETUP.md)**  
 📖 **[Guia completo de configuração do Gemini](GEMINI_SETUP.md)**
 
 ### ✅ Pronto!

@@ -105,7 +105,7 @@ WEEKLY_FEEDS = {
 HISTORY_FILE = "history.json"
 
 class DailyReporter:
-    def __init__(self, webhook_url, gemini_api_key=None):
+    def __init__(self, webhook_url, gemini_api_key=None, perplexity_api_key=None):
         # Force UTF-8 for Windows console
         import sys
         if sys.platform == 'win32':
@@ -118,13 +118,20 @@ class DailyReporter:
         self.tz_BR = pytz.timezone('America/Sao_Paulo')
         self.history = self.load_history()
         
+        # Initialize Perplexity API
+        self.perplexity_api_key = perplexity_api_key
+        if self.perplexity_api_key:
+            print("✅ Perplexity API configurada com sucesso!")
+        else:
+            print("⚠️ Perplexity API key não fornecida.")
+        
         # Initialize Gemini API
         self.gemini_api_key = gemini_api_key
         if self.gemini_api_key:
             genai.configure(api_key=self.gemini_api_key)
             print("✅ Gemini API configurada com sucesso!")
         else:
-            print("⚠️ Gemini API key não fornecida. Resumos não serão gerados.")
+            print("⚠️ Gemini API key não fornecida.")
 
     def load_history(self):
         if os.path.exists(HISTORY_FILE):
@@ -171,25 +178,80 @@ class DailyReporter:
             print(f"   ⚠️ Erro ao buscar conteúdo de {url}: {e}")
             return None
     
-    def generate_summary(self, article):
+    def generate_summary_perplexity(self, article, content):
+        """Generate a Portuguese summary using Perplexity AI"""
+        if not self.perplexity_api_key:
+            return None
+        
+        try:
+            print(f"   🔮 Tentando gerar resumo com Perplexity...")
+            
+            # Create prompt
+            prompt = f"""Você é um especialista em filosofia e cultura. 
+Analise o texto abaixo e faça o seguinte:
+1. Gere um resumo explicativo em Português Brasileiro.
+2. Mantenha o tom sofisticado mas acessível.
+
+Título: {article['title']}
+Fonte: {article['source']}
+
+Texto base:
+{content}
+
+Resumo em Português:"""
+            
+            # Perplexity API endpoint
+            url = "https://api.perplexity.ai/chat/completions"
+            
+            payload = {
+                "model": "llama-3.1-sonar-small-128k-online",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Você é um assistente especializado em criar resumos sofisticados em Português Brasileiro."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": 500,
+                "temperature": 0.2,
+                "top_p": 0.9,
+                "return_citations": False,
+                "search_domain_filter": [],
+                "return_images": False,
+                "return_related_questions": False,
+                "search_recency_filter": "month",
+                "top_k": 0,
+                "stream": False,
+                "presence_penalty": 0,
+                "frequency_penalty": 1
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {self.perplexity_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result['choices'][0]['message']['content']
+            
+        except Exception as e:
+            print(f"   ⚠️ Falha com Perplexity: {e}")
+            return None
+    
+    def generate_summary_gemini(self, article, content):
         """Generate a Portuguese summary using Gemini AI with model fallback"""
         if not self.gemini_api_key:
-            return article.get('summary', 'Sem resumo disponível')
+            return None
         
         # List of models to try in order
         models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro']
         
-        # Try to fetch full article content
-        content = self.fetch_article_content(article['link'])
-        
-        # If fetch fails, use the RSS summary as context
-        if not content:
-            print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo do RSS para gerar IA.")
-            content = article.get('summary', '')
-
-        if not content:
-            return "Conteúdo não disponível para resumo."
-
         # Create prompt
         prompt = f"""Você é um especialista em filosofia e cultura. 
 Analise o texto abaixo e faça o seguinte:
@@ -204,22 +266,44 @@ Texto base:
 
 Resumo em Português:"""
 
-        last_error = None
-
         # Try each model until one works
         for model_name in models_to_try:
             try:
-                print(f"   🤖 Tentando gerar resumo com modelo: {model_name}...")
+                print(f"   🤖 Tentando gerar resumo com modelo Gemini: {model_name}...")
                 model = genai.GenerativeModel(model_name)
                 response = model.generate_content(prompt)
                 return response.text
             except Exception as e:
                 print(f"   ⚠️ Falha com {model_name}: {e}")
-                last_error = e
                 continue
         
-        # If all models fail
-        return f"{article.get('summary', '')}\n\n⚠️ *Erro IA (Todos os modelos falharam):* {str(last_error)}"
+        return None
+    
+    def generate_summary(self, article):
+        """Generate a Portuguese summary using AI (Perplexity or Gemini) with fallback"""
+        # Try to fetch full article content
+        content = self.fetch_article_content(article['link'])
+        
+        # If fetch fails, use the RSS summary as context
+        if not content:
+            print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo do RSS para gerar IA.")
+            content = article.get('summary', '')
+
+        if not content:
+            return "Conteúdo não disponível para resumo."
+        
+        # Try Perplexity first
+        summary = self.generate_summary_perplexity(article, content)
+        if summary:
+            return summary
+        
+        # Try Gemini as fallback
+        summary = self.generate_summary_gemini(article, content)
+        if summary:
+            return summary
+        
+        # If all AI methods fail, return RSS summary
+        return f"{article.get('summary', 'Sem resumo disponível')}\n\n⚠️ *Resumo gerado por IA não disponível*"
 
     def collect_data(self):
         # Get current day of week (0=Monday, 6=Sunday)
@@ -355,5 +439,6 @@ Resumo em Português:"""
 if __name__ == "__main__":
     webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
     gemini_api_key = os.environ.get('GEMINI_API_KEY')
-    reporter = DailyReporter(webhook_url, gemini_api_key)
+    perplexity_api_key = os.environ.get('PERPLEXITY_API_KEY')
+    reporter = DailyReporter(webhook_url, gemini_api_key, perplexity_api_key)
     reporter.send()
