@@ -122,7 +122,10 @@ class DailyReporter:
         self.gemini_api_key = gemini_api_key
         if self.gemini_api_key:
             genai.configure(api_key=self.gemini_api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            try:
+                self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            except:
+                self.model = genai.GenerativeModel('gemini-pro')
             print("✅ Gemini API configurada com sucesso!")
         else:
             self.model = None
