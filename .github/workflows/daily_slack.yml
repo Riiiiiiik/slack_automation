@@ -40,4 +40,4 @@ jobs:
           git config --global user.email 'action@github.com'
           git add history.json
           # Only commit if there are changes
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update history.json [skip ci]" && git pull --rebase --autostash && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update history.json [skip ci]" && git pull --rebase --autostash && git push) || echo "⚠️ Falha ao atualizar histórico (conflito de merge). Isso é normal se houver pushes simultâneos."
