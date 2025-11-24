@@ -122,11 +122,8 @@ class DailyReporter:
         self.gemini_api_key = gemini_api_key
         if self.gemini_api_key:
             genai.configure(api_key=self.gemini_api_key)
-            # Usando gemini-pro que é mais estável universalmente
-            self.model = genai.GenerativeModel('gemini-pro')
             print("✅ Gemini API configurada com sucesso!")
         else:
-            self.model = None
             print("⚠️ Gemini API key não fornecida. Resumos não serão gerados.")
 
     def load_history(self):
@@ -175,24 +172,26 @@ class DailyReporter:
             return None
     
     def generate_summary(self, article):
-        """Generate a Portuguese summary using Gemini AI"""
-        if not self.model:
+        """Generate a Portuguese summary using Gemini AI with model fallback"""
+        if not self.gemini_api_key:
             return article.get('summary', 'Sem resumo disponível')
         
-        try:
-            # Try to fetch full article content
-            content = self.fetch_article_content(article['link'])
-            
-            # If fetch fails, use the RSS summary as context
-            if not content:
-                print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo do RSS para gerar IA.")
-                content = article.get('summary', '')
+        # List of models to try in order
+        models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro']
+        
+        # Try to fetch full article content
+        content = self.fetch_article_content(article['link'])
+        
+        # If fetch fails, use the RSS summary as context
+        if not content:
+            print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo do RSS para gerar IA.")
+            content = article.get('summary', '')
 
-            if not content:
-                return "Conteúdo não disponível para resumo."
+        if not content:
+            return "Conteúdo não disponível para resumo."
 
-            # Create prompt for Gemini
-            prompt = f"""Você é um especialista em filosofia e cultura. 
+        # Create prompt
+        prompt = f"""Você é um especialista em filosofia e cultura. 
 Analise o texto abaixo e faça o seguinte:
 1. Gere um resumo explicativo em Português Brasileiro.
 2. Mantenha o tom sofisticado mas acessível.
@@ -205,14 +204,22 @@ Texto base:
 
 Resumo em Português:"""
 
-            print(f"   🤖 Gerando resumo com Gemini para: {article['title'][:50]}...")
-            response = self.model.generate_content(prompt)
-            return response.text
-            
-        except Exception as e:
-            print(f"   ⚠️ Erro ao gerar resumo com Gemini: {e}")
-            # Retorna o erro visível para debug
-            return f"{article.get('summary', '')}\n\n⚠️ *Erro IA:* {str(e)}"
+        last_error = None
+
+        # Try each model until one works
+        for model_name in models_to_try:
+            try:
+                print(f"   🤖 Tentando gerar resumo com modelo: {model_name}...")
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                return response.text
+            except Exception as e:
+                print(f"   ⚠️ Falha com {model_name}: {e}")
+                last_error = e
+                continue
+        
+        # If all models fail
+        return f"{article.get('summary', '')}\n\n⚠️ *Erro IA (Todos os modelos falharam):* {str(last_error)}"
 
     def collect_data(self):
         # Get current day of week (0=Monday, 6=Sunday)
