@@ -182,30 +182,35 @@ class DailyReporter:
             return article.get('summary', 'Sem resumo disponível')
         
         try:
-            # Fetch full article content
+            # Try to fetch full article content
             content = self.fetch_article_content(article['link'])
             
+            # If fetch fails, use the RSS summary as context (better than nothing)
             if not content:
-                return article.get('summary', 'Sem resumo disponível')
-            
-            # Create prompt for Gemini
-            prompt = f"""Você é um especialista em filosofia. Analise o seguinte artigo e forneça:
+                print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo do RSS para gerar IA.")
+                content = article.get('summary', '')
 
-1. Um resumo conciso em português (máximo 3 parágrafos)
-2. Os principais conceitos filosóficos abordados
-3. A relevância do tema
+            if not content:
+                return "Conteúdo não disponível para resumo."
+
+            # Create prompt for Gemini
+            prompt = f"""Você é um especialista em filosofia e cultura. 
+Analise o texto abaixo (que pode ser um artigo completo ou um resumo) e faça o seguinte:
+
+1. Gere um resumo explicativo em Português Brasileiro.
+2. Se o texto for curto, traduza e expanda com base no seu conhecimento.
+3. Mantenha o tom sofisticado mas acessível.
 
 Título: {article['title']}
 Fonte: {article['source']}
 
-Conteúdo:
+Texto base:
 {content}
 
-Forneça o resumo em português brasileiro, de forma clara e acessível."""
+Resumo em Português:"""
 
             print(f"   🤖 Gerando resumo com Gemini para: {article['title'][:50]}...")
             response = self.model.generate_content(prompt)
-            
             return response.text
             
         except Exception as e:
@@ -298,8 +303,11 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
         # Force UTF-8 for Windows console
         import sys
         if sys.platform == 'win32':
-            sys.stdout.reconfigure(encoding='utf-8')
-
+            try:
+                sys.stdout.reconfigure(encoding='utf-8')
+            except:
+                pass
+    
         print("🔄 Coletando dados...")
         result = self.collect_data()
         
