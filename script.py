@@ -1,7 +1,11 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import requests
 import json
-import feedparser
+
 import random
 from datetime import datetime
 import pytz
@@ -130,7 +134,7 @@ class DailyReporter:
         if self.news_api_key:
             print("✅ NewsAPI configurada com sucesso!")
         else:
-            print("⚠️ NewsAPI key não fornecida. Usando modo RSS.")
+            print("⚠️ NewsAPI key não fornecida. O script não funcionará corretamente sem ela.")
 
         # Initialize Perplexity API
         self.perplexity_api_key = perplexity_api_key
@@ -316,8 +320,12 @@ Resumo em Português:"""
         if summary:
             return summary
         
-        # If all AI methods fail, return RSS summary
-        return f"{article.get('summary', 'Sem resumo disponível')}\n\n⚠️ *Resumo gerado por IA não disponível*"
+        # If all AI methods fail, return RSS summary with error details
+        error_msg = "⚠️ *Resumo gerado por IA não disponível*"
+        if not self.gemini_api_key and not self.perplexity_api_key:
+            error_msg += "\n_(Nenhuma API Key de IA configurada)_"
+        
+        return f"{article.get('summary', 'Sem resumo disponível')}\n\n{error_msg}"
 
     def fetch_from_newsapi(self, keywords):
         """Fetch articles using NewsAPI"""
@@ -364,37 +372,15 @@ Resumo em Português:"""
         day_config = WEEKLY_FEEDS[today]
         
         print(f"📅 Tema de hoje: {day_config['theme']}")
-        print(f"� Tema de hoje: {day_config['theme']}")
         all_entries = []
         
-        # Try NewsAPI first if available
+        # NewsAPI is now mandatory/primary
         if self.news_api_key and 'keywords' in day_config:
             print("📡 Usando NewsAPI para busca...")
             api_entries = self.fetch_from_newsapi(day_config['keywords'])
             all_entries.extend(api_entries)
-            
-        # If no API results (or no key), fall back to RSS
-        if not all_entries:
-            print("📡 Buscando feeds RSS (Fallback)...")
-            for feed_url in day_config['feeds']:
-                try:
-                    print(f"   - Lendo: {feed_url}")
-                    feed = feedparser.parse(feed_url)
-                    for entry in feed.entries:
-                        # Clean up RSS summary (remove HTML tags)
-                        raw_summary = entry.get('summary', 'No summary available')
-                        soup = BeautifulSoup(raw_summary, 'html.parser')
-                        clean_summary = soup.get_text().strip()
-
-                        # Basic normalization
-                        all_entries.append({
-                            "title": entry.title,
-                            "link": entry.link,
-                            "source": feed.feed.get('title', 'Unknown Source'),
-                            "summary": clean_summary[:300] + "..."
-                        })
-                except Exception as e:
-                    print(f"   ⚠️ Erro ao ler {feed_url}: {e}")
+        else:
+            print("⚠️ NewsAPI Key não configurada ou keywords ausentes. Configure a NEWS_API_KEY para buscar artigos.")
 
         # Filter out already sent articles
         new_entries = [e for e in all_entries if e['link'] not in self.history]
