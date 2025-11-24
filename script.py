@@ -228,7 +228,7 @@ Resumo em Português (máximo 500 caracteres):"""
                 url = "https://api.perplexity.ai/chat/completions"
                 
                 payload = {
-                    "model": "llama-3.1-sonar-small-128k-online",
+                    "model": "sonar-small-chat",  # Updated to valid model name
                     "messages": [
                         {
                             "role": "system",
@@ -239,18 +239,10 @@ Resumo em Português (máximo 500 caracteres):"""
                             "content": prompt
                         }
                     ],
-                    "max_tokens": 200,  # Reduced to ensure we stay within 500 chars
-                    "temperature": 0.3,  # Lower temperature for more focused output
+                    "max_tokens": 200,
+                    "temperature": 0.3,
                     "top_p": 0.9,
-                    "return_citations": False,
-                    "search_domain_filter": [],
-                    "return_images": False,
-                    "return_related_questions": False,
-                    "search_recency_filter": "month",
-                    "top_k": 0,
-                    "stream": False,
-                    "presence_penalty": 0,
-                    "frequency_penalty": 1
+                    "stream": False
                 }
                 
                 headers = {
@@ -305,8 +297,8 @@ Resumo em Português (máximo 500 caracteres):"""
         if not self.gemini_api_key:
             return None, "API Key não configurada"
         
-        # Use only the most stable model
-        model_name = 'gemini-pro'
+        # Use the current stable model
+        model_name = 'gemini-1.5-flash'
         
         # Create prompt
         prompt = f"""Você é um especialista em filosofia e cultura. 
