@@ -197,84 +197,16 @@ class DailyReporter:
             return None
     
     def generate_summary_perplexity(self, article, content):
-        """Generate a Portuguese summary using Perplexity AI"""
+        """Generate a Portuguese summary using Perplexity AI with retry logic"""
         if not self.perplexity_api_key:
-            return None
-        
-        try:
-            print(f"   🔮 Tentando gerar resumo com Perplexity...")
-            
-            # Create prompt
-            prompt = f"""Você é um especialista em filosofia e cultura. 
-Analise o texto abaixo e faça o seguinte:
-1. Gere um resumo explicativo em Português Brasileiro.
-2. Mantenha o tom sofisticado mas acessível.
-
-Título: {article['title']}
-Fonte: {article['source']}
-
-Texto base:
-{content}
-
-Resumo em Português:"""
-            
-            # Perplexity API endpoint
-            url = "https://api.perplexity.ai/chat/completions"
-            
-            payload = {
-                "model": "llama-3.1-sonar-small-128k-online",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "Você é um assistente especializado em criar resumos sofisticados em Português Brasileiro."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": 500,
-                "temperature": 0.2,
-                "top_p": 0.9,
-                "return_citations": False,
-                "search_domain_filter": [],
-                "return_images": False,
-                "return_related_questions": False,
-                "search_recency_filter": "month",
-                "top_k": 0,
-                "stream": False,
-                "presence_penalty": 0,
-                "frequency_penalty": 1
-            }
-            
-            headers = {
-                "Authorization": f"Bearer {self.perplexity_api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            response.raise_for_status()
-            
-            result = response.json()
-            return result['choices'][0]['message']['content']
-            
-        except Exception as e:
-            print(f"   ⚠️ Falha com Perplexity: {e}")
-            return None
-    
-    def generate_summary_gemini(self, article, content):
-        """Generate a Portuguese summary using Gemini AI with model fallback"""
-        if not self.gemini_api_key:
-            return None
-        
-        # List of models to try in order
-        models_to_try = ['gemini-1.5-flash-001', 'gemini-1.5-flash-002', 'gemini-1.5-pro-001', 'gemini-1.5-pro-002', 'gemini-pro', 'gemini-1.5-flash']
+            return None, "API Key não configurada"
         
         # Create prompt
         prompt = f"""Você é um especialista em filosofia e cultura. 
 Analise o texto abaixo e faça o seguinte:
-1. Gere um resumo explicativo em Português Brasileiro.
+1. Gere um resumo explicativo em Português Brasileiro com EXATAMENTE 500 caracteres ou menos.
 2. Mantenha o tom sofisticado mas acessível.
+3. Seja conciso e direto.
 
 Título: {article['title']}
 Fonte: {article['source']}
@@ -282,20 +214,162 @@ Fonte: {article['source']}
 Texto base:
 {content}
 
-Resumo em Português:"""
-
-        # Try each model until one works
-        for model_name in models_to_try:
-            try:
-                print(f"   🤖 Tentando gerar resumo com modelo Gemini: {model_name}...")
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(prompt)
-                return response.text
-            except Exception as e:
-                print(f"   ⚠️ Falha com {model_name}: {e}")
-                continue
+Resumo em Português (máximo 500 caracteres):"""
         
-        return None
+        # Retry logic with exponential backoff
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"   🔮 Tentando gerar resumo com Perplexity - Tentativa {attempt + 1}/{max_retries}...")
+                
+                # Perplexity API endpoint
+                url = "https://api.perplexity.ai/chat/completions"
+                
+                payload = {
+                    "model": "llama-3.1-sonar-small-128k-online",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "Você é um assistente especializado em criar resumos sofisticados e concisos em Português Brasileiro. Sempre respeite o limite de caracteres solicitado."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "max_tokens": 200,  # Reduced to ensure we stay within 500 chars
+                    "temperature": 0.3,  # Lower temperature for more focused output
+                    "top_p": 0.9,
+                    "return_citations": False,
+                    "search_domain_filter": [],
+                    "return_images": False,
+                    "return_related_questions": False,
+                    "search_recency_filter": "month",
+                    "top_k": 0,
+                    "stream": False,
+                    "presence_penalty": 0,
+                    "frequency_penalty": 1
+                }
+                
+                headers = {
+                    "Authorization": f"Bearer {self.perplexity_api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                response = requests.post(url, json=payload, headers=headers, timeout=30)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                if 'choices' in result and len(result['choices']) > 0:
+                    summary = result['choices'][0]['message']['content']
+                    print(f"   ✅ Resumo gerado com sucesso pela Perplexity!")
+                    return summary, None
+                else:
+                    error_msg = "Resposta vazia da API"
+                    print(f"   ⚠️ {error_msg}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(retry_delay * (attempt + 1))
+                        continue
+                    return None, error_msg
+                
+            except requests.exceptions.HTTPError as e:
+                error_msg = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+                print(f"   ⚠️ Falha na tentativa {attempt + 1}: {error_msg}")
+                
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                else:
+                    return None, f"Todas as tentativas falharam. Último erro: {error_msg}"
+                    
+            except Exception as e:
+                error_msg = str(e)
+                print(f"   ⚠️ Falha na tentativa {attempt + 1}: {error_msg}")
+                
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                else:
+                    return None, f"Todas as tentativas falharam. Último erro: {error_msg}"
+        
+        return None, "Número máximo de tentativas excedido"
+    
+    def generate_summary_gemini(self, article, content):
+        """Generate a Portuguese summary using Gemini AI with retry logic"""
+        if not self.gemini_api_key:
+            return None, "API Key não configurada"
+        
+        # Use only the most stable model
+        model_name = 'gemini-pro'
+        
+        # Create prompt
+        prompt = f"""Você é um especialista em filosofia e cultura. 
+Analise o texto abaixo e faça o seguinte:
+1. Gere um resumo explicativo em Português Brasileiro com EXATAMENTE 500 caracteres ou menos.
+2. Mantenha o tom sofisticado mas acessível.
+3. Seja conciso e direto.
+
+Título: {article['title']}
+Fonte: {article['source']}
+
+Texto base:
+{content}
+
+Resumo em Português (máximo 500 caracteres):"""
+
+        # Retry logic with exponential backoff
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"   🤖 Tentando gerar resumo com Gemini ({model_name}) - Tentativa {attempt + 1}/{max_retries}...")
+                
+                model = genai.GenerativeModel(model_name)
+                
+                # Configure generation with safety settings
+                generation_config = {
+                    'temperature': 0.7,
+                    'top_p': 0.8,
+                    'top_k': 40,
+                    'max_output_tokens': 600,
+                }
+                
+                response = model.generate_content(
+                    prompt,
+                    generation_config=generation_config
+                )
+                
+                if response and response.text:
+                    print(f"   ✅ Resumo gerado com sucesso!")
+                    return response.text, None
+                else:
+                    error_msg = "Resposta vazia do modelo"
+                    print(f"   ⚠️ {error_msg}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(retry_delay * (attempt + 1))
+                        continue
+                    return None, error_msg
+                    
+            except Exception as e:
+                error_msg = str(e)
+                print(f"   ⚠️ Falha na tentativa {attempt + 1}: {error_msg}")
+                
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                else:
+                    return None, f"Todas as tentativas falharam. Último erro: {error_msg}"
+        
+        return None, "Número máximo de tentativas excedido"
     
     def generate_summary(self, article):
         """Generate a Portuguese summary using AI (Perplexity or Gemini) with fallback"""
@@ -311,21 +385,40 @@ Resumo em Português:"""
             return "Conteúdo não disponível para resumo."
         
         # Try Perplexity first
-        summary = self.generate_summary_perplexity(article, content)
+        summary, perp_error = self.generate_summary_perplexity(article, content)
         if summary:
+            # Enforce 500 character limit
+            if len(summary) > 500:
+                summary = summary[:497] + "..."
             return summary
         
         # Try Gemini as fallback
-        summary = self.generate_summary_gemini(article, content)
+        summary, gemini_error = self.generate_summary_gemini(article, content)
         if summary:
+            # Enforce 500 character limit
+            if len(summary) > 500:
+                summary = summary[:497] + "..."
             return summary
         
-        # If all AI methods fail, return RSS summary with error details
-        error_msg = "⚠️ *Resumo gerado por IA não disponível*"
-        if not self.gemini_api_key and not self.perplexity_api_key:
-            error_msg += "\n_(Nenhuma API Key de IA configurada)_"
+        # If all AI methods fail, return the original summary from NewsAPI/RSS
+        # This is a "graceful degradation" - better to have a simple summary than an error message
+        original_summary = article.get('summary', 'Sem resumo disponível')
         
-        return f"{article.get('summary', 'Sem resumo disponível')}\n\n{error_msg}"
+        # Enforce 500 character limit on original summary too
+        if len(original_summary) > 500:
+            original_summary = original_summary[:497] + "..."
+        
+        # Add a small footer indicating AI failed, but keep it clean
+        footer = "\n\n_(Resumo original da fonte - IA indisponível)_"
+        
+        # Log the detailed errors for debugging, but don't show them to the end user in the main text
+        print(f"   ⚠️ Falha na geração de IA para '{article['title']}':")
+        if perp_error:
+            print(f"      - Perplexity: {perp_error}")
+        if gemini_error:
+            print(f"      - Gemini: {gemini_error}")
+            
+        return f"{original_summary}{footer}"
 
     def fetch_from_newsapi(self, keywords):
         """Fetch articles using NewsAPI"""
