@@ -368,13 +368,20 @@ Resumo em Português (máximo 500 caracteres):"""
         # Try to fetch full article content
         content = self.fetch_article_content(article['link'])
         
-        # If fetch fails, use the RSS summary as context
+        # If fetch fails, use the NewsAPI summary as context
         if not content:
-            print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo do RSS para gerar IA.")
-            content = article.get('summary', '')
+            print(f"   ⚠️ Falha ao ler artigo completo. Usando resumo da NewsAPI para gerar IA.")
+            content = article.get('summary', '') or article.get('description', '')
 
-        if not content:
-            return "Conteúdo não disponível para resumo."
+        # If still no content, return early
+        if not content or len(content.strip()) < 50:
+            print(f"   ⚠️ Conteúdo insuficiente para gerar resumo com IA.")
+            original_summary = article.get('summary', 'Sem resumo disponível')
+            if len(original_summary) > 500:
+                original_summary = original_summary[:497] + "..."
+            return f"{original_summary}\n\n_(Resumo original da fonte - IA indisponível)_"
+        
+        print(f"   📝 Conteúdo obtido: {len(content)} caracteres")
         
         # Try Perplexity first
         summary, perp_error = self.generate_summary_perplexity(article, content)
