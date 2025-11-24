@@ -8,16 +8,99 @@ import pytz
 from bs4 import BeautifulSoup
 import google.generativeai as genai
 
-# List of Philosophy RSS Feeds
-FEEDS = [
-    "https://dailynous.com/feed/",
-    "https://aeon.co/feed.rss",
-    "https://plato.stanford.edu/rss/sep.xml",
-    "https://philosophynow.org/rss",
-    "https://leiterreports.typepad.com/blog/atom.xml",
-    "http://feeds.feedburner.com/PhilosophyBites",
-    "https://theconversation.com/global/topics/philosophy-24/articles.atom"
-]
+# Weekly Themed Feeds Schedule
+WEEKLY_FEEDS = {
+    0: {  # Segunda-feira - Filosofia
+        "theme": "🧠 Filosofia",
+        "emoji": "🧠",
+        "feeds": [
+            "https://dailynous.com/feed/",
+            "https://aeon.co/feed.rss",
+            "https://plato.stanford.edu/rss/sep.xml",
+            "https://philosophynow.org/rss",
+            "https://leiterreports.typepad.com/blog/atom.xml",
+            "http://feeds.feedburner.com/PhilosophyBites",
+            "https://theconversation.com/global/topics/philosophy-24/articles.atom"
+        ]
+    },
+    1: {  # Terça-feira - Finanças & Hedge Funds
+        "theme": "💰 Finanças & Hedge Funds",
+        "emoji": "💰",
+        "feeds": [
+            "https://www.ft.com/rss/home",
+            "https://www.bloomberg.com/feed/podcast/etf-iq.xml",
+            "https://www.hedgeweek.com/feed/",
+            "https://www.institutionalinvestor.com/RSS",
+            "https://www.investopedia.com/feedbuilder/feed/getfeed?feedName=rss_headline",
+            "https://seekingalpha.com/feed.xml",
+            "https://www.marketwatch.com/rss/topstories"
+        ]
+    },
+    2: {  # Quarta-feira - Ciências Sociais
+        "theme": "👥 Ciências Sociais",
+        "emoji": "👥",
+        "feeds": [
+            "https://theconversation.com/global/topics/sociology-76/articles.atom",
+            "https://www.sciencedaily.com/rss/mind_brain/psychology.xml",
+            "https://www.tandfonline.com/feed/rss/rsoc20",
+            "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=ssia&type=etoc&feed=rss",
+            "https://www.anthropology-news.org/feed/",
+            "https://blogs.lse.ac.uk/feed/"
+        ]
+    },
+    3: {  # Quinta-feira - Alta Gastronomia & Culinária
+        "theme": "🍽️ Alta Gastronomia & Culinária",
+        "emoji": "🍽️",
+        "feeds": [
+            "https://www.seriouseats.com/feed",
+            "https://www.bonappetit.com/feed/rss",
+            "https://www.saveur.com/feed/",
+            "https://www.foodandwine.com/rss/news.xml",
+            "https://www.theworlds50best.com/feed",
+            "https://www.eater.com/rss/index.xml",
+            "https://www.finedininglovers.com/rss"
+        ]
+    },
+    4: {  # Sexta-feira - Ciência em Geral
+        "theme": "🔬 Ciência em Geral",
+        "emoji": "🔬",
+        "feeds": [
+            "https://www.nature.com/nature.rss",
+            "https://www.sciencemag.org/rss/news_current.xml",
+            "https://www.sciencedaily.com/rss/all.xml",
+            "https://www.newscientist.com/feed/home",
+            "https://www.scientificamerican.com/feed/",
+            "https://phys.org/rss-feed/",
+            "https://www.space.com/feeds/all"
+        ]
+    },
+    5: {  # Sábado - Diversos
+        "theme": "🌍 Tópicos Diversos",
+        "emoji": "🌍",
+        "feeds": [
+            "https://www.theguardian.com/world/rss",
+            "https://www.bbc.com/news/rss.xml",
+            "https://www.theatlantic.com/feed/all/",
+            "https://www.newyorker.com/feed/everything",
+            "https://www.wired.com/feed/rss",
+            "https://aeon.co/feed.rss",
+            "https://www.vox.com/rss/index.xml"
+        ]
+    },
+    6: {  # Domingo - Diversos
+        "theme": "🎨 Arte, Cultura & Diversos",
+        "emoji": "🎨",
+        "feeds": [
+            "https://www.artforum.com/rss.xml",
+            "https://hyperallergic.com/feed/",
+            "https://www.theparisreview.org/blog/feed/",
+            "https://lithub.com/feed/",
+            "https://www.smithsonianmag.com/rss/latest_articles/",
+            "https://www.npr.org/rss/rss.php?id=1008",
+            "https://www.ted.com/talks/rss"
+        ]
+    }
+}
 
 HISTORY_FILE = "history.json"
 
@@ -119,10 +202,15 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
             return article.get('summary', 'Sem resumo disponível')
 
     def collect_data(self):
+        # Get current day of week (0=Monday, 6=Sunday)
+        today = datetime.now(self.tz_BR).weekday()
+        day_config = WEEKLY_FEEDS[today]
+        
+        print(f"📅 Tema de hoje: {day_config['theme']}")
         print("📡 Buscando feeds RSS...")
         all_entries = []
         
-        for feed_url in FEEDS:
+        for feed_url in day_config['feeds']:
             try:
                 print(f"   - Lendo: {feed_url}")
                 feed = feedparser.parse(feed_url)
@@ -144,14 +232,14 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
         print(f"🆕 Artigos novos (não enviados): {len(new_entries)}")
 
         if not new_entries:
-            return None
+            return None, day_config
 
         # Select 2 random articles
         selected = random.sample(new_entries, min(2, len(new_entries)))
         
-        return selected
+        return selected, day_config
 
-    def format_message(self, articles):
+    def format_message(self, articles, day_config):
         current_time = self.get_current_time()
         
         blocks = [
@@ -159,7 +247,7 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": "🧠 Dose Diária de Filosofia",
+                    "text": f"{day_config['emoji']} Curadoria Diária: {day_config['theme']}",
                     "emoji": True
                 }
             },
@@ -197,14 +285,16 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
             sys.stdout.reconfigure(encoding='utf-8')
 
         print("🔄 Coletando dados...")
-        data = self.collect_data()
+        result = self.collect_data()
         
-        if not data:
+        if not result[0]:  # No articles found
             print("📭 Nenhum artigo novo encontrado hoje.")
             return
+        
+        articles, day_config = result
 
         print("📝 Formatando mensagem...")
-        message_payload = self.format_message(data)
+        message_payload = self.format_message(articles, day_config)
 
         if not self.webhook_url:
             print("⚠️ Error: SLACK_WEBHOOK_URL not set. Skipping send (Dry Run).")
@@ -226,7 +316,7 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
             else:
                 print("✅ Mensagem enviada com sucesso!")
                 # Update history only on success
-                for article in data:
+                for article in articles:
                     self.history.append(article['link'])
                 self.save_history()
                 

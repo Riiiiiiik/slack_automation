@@ -1,13 +1,28 @@
-# 🧠 Automação Diária de Filosofia para Slack com IA 🤖
+# 🧠 Curadoria Temática Semanal com IA 🤖
 
-Este projeto é uma automação que roda todos os dias às **07:30 (Horário de Brasília)**, busca artigos de filosofia em diversas fontes internacionais, **usa IA (Google Gemini) para gerar resumos em português**, e envia 2 destaques para o seu Slack.
+Este projeto é uma automação que roda todos os dias às **07:30 (Horário de Brasília)**, busca artigos sobre **temas diferentes para cada dia da semana**, **usa IA (Google Gemini) para gerar resumos em português**, e envia 2 destaques para o seu Slack.
 
-## ✨ Novidade: Resumos Gerados por IA!
-Agora o bot não envia apenas snippets dos feeds RSS. Ele:
+## 📅 Calendário Semanal
+
+Cada dia da semana tem um tema diferente:
+- 🧠 **Segunda**: Filosofia
+- 💰 **Terça**: Finanças & Hedge Funds
+- 👥 **Quarta**: Ciências Sociais
+- 🍽️ **Quinta**: Alta Gastronomia & Culinária
+- 🔬 **Sexta**: Ciência em Geral
+- 🌍 **Sábado**: Tópicos Diversos
+- 🎨 **Domingo**: Arte, Cultura & Diversos
+
+📖 **[Ver programação completa e fontes](WEEKLY_SCHEDULE.md)**
+
+## ✨ Recursos Principais
+
+### 🤖 Resumos Gerados por IA
+O bot não envia apenas snippets dos feeds RSS. Ele:
 - 📖 Lê o artigo completo
 - 🤖 Usa o Google Gemini para gerar um resumo inteligente
 - 🇧🇷 Traduz e adapta para Português Brasileiro
-- 💡 Destaca os conceitos filosóficos principais
+- 💡 Destaca os conceitos principais de cada tema
 
 ## 🚀 Como colocar no ar
 
