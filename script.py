@@ -17,7 +17,7 @@ WEEKLY_FEEDS = {
     0: {  # Segunda-feira - Filosofia
         "theme": "🧠 Filosofia",
         "emoji": "🧠",
-        "keywords": "philosophy OR ethics OR metaphysics",
+        "keywords": "(philosophy OR ethics OR epistemology OR metaphysics) AND (theory OR analysis OR debate) -celebrity -gossip",
         "feeds": [
             "https://dailynous.com/feed/",
             "https://aeon.co/feed.rss",
@@ -31,7 +31,7 @@ WEEKLY_FEEDS = {
     1: {  # Terça-feira - Finanças & Hedge Funds
         "theme": "💰 Finanças & Hedge Funds",
         "emoji": "💰",
-        "keywords": "hedge funds OR financial markets OR investment strategy",
+        "keywords": "(\"hedge fund\" OR \"investment strategy\" OR \"portfolio management\" OR \"financial markets\" OR \"asset management\") AND (analysis OR strategy OR performance) -crypto -bitcoin",
         "feeds": [
             "https://www.ft.com/rss/home",
             "https://www.bloomberg.com/feed/podcast/etf-iq.xml",
@@ -45,7 +45,7 @@ WEEKLY_FEEDS = {
     2: {  # Quarta-feira - Ciências Sociais
         "theme": "👥 Ciências Sociais",
         "emoji": "👥",
-        "keywords": "sociology OR anthropology OR social psychology",
+        "keywords": "(sociology OR anthropology OR \"social psychology\" OR \"behavioral science\") AND (research OR study OR theory) -celebrity -entertainment",
         "feeds": [
             "https://theconversation.com/global/topics/sociology-76/articles.atom",
             "https://www.sciencedaily.com/rss/mind_brain/psychology.xml",
@@ -58,7 +58,7 @@ WEEKLY_FEEDS = {
     3: {  # Quinta-feira - Alta Gastronomia & Culinária
         "theme": "🍽️ Alta Gastronomia & Culinária",
         "emoji": "🍽️",
-        "keywords": "fine dining OR gastronomy OR culinary arts OR michelin star",
+        "keywords": "(\"fine dining\" OR gastronomy OR \"culinary arts\" OR \"michelin star\" OR \"haute cuisine\" OR chef) AND (restaurant OR technique OR innovation) -recipe -home",
         "feeds": [
             "https://www.seriouseats.com/feed",
             "https://www.bonappetit.com/feed/rss",
@@ -72,7 +72,7 @@ WEEKLY_FEEDS = {
     4: {  # Sexta-feira - Ciência em Geral
         "theme": "🔬 Ciência em Geral",
         "emoji": "🔬",
-        "keywords": "scientific research OR physics OR biology OR space exploration",
+        "keywords": "(\"scientific research\" OR \"breakthrough\" OR discovery OR physics OR biology OR \"space exploration\" OR astronomy) AND (study OR experiment OR findings) -horoscope -astrology",
         "feeds": [
             "https://www.nature.com/nature.rss",
             "https://www.sciencemag.org/rss/news_current.xml",
@@ -86,7 +86,7 @@ WEEKLY_FEEDS = {
     5: {  # Sábado - Diversos
         "theme": "🌍 Tópicos Diversos",
         "emoji": "🌍",
-        "keywords": "world news OR technology OR culture OR innovation",
+        "keywords": "(technology OR innovation OR \"artificial intelligence\" OR geopolitics OR \"global affairs\") AND (analysis OR impact OR development) -celebrity -sports",
         "feeds": [
             "https://www.theguardian.com/world/rss",
             "https://www.bbc.com/news/rss.xml",
@@ -100,7 +100,7 @@ WEEKLY_FEEDS = {
     6: {  # Domingo - Diversos
         "theme": "🎨 Arte, Cultura & Diversos",
         "emoji": "🎨",
-        "keywords": "contemporary art OR literature OR cultural criticism",
+        "keywords": "(\"contemporary art\" OR literature OR \"cultural criticism\" OR exhibition OR museum OR \"art history\") AND (review OR analysis OR critique) -celebrity -gossip",
         "feeds": [
             "https://www.artforum.com/rss.xml",
             "https://hyperallergic.com/feed/",
