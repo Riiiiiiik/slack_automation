@@ -82,7 +82,16 @@ O Gemini é usado como fallback caso a Perplexity não esteja configurada ou fal
 6. **Secret**: Cole a API key do Gemini
 7. Clique em **Add secret**
 
-> **💡 Dica**: Configure pelo menos uma das APIs de IA (Perplexity ou Gemini) para obter resumos inteligentes. Se nenhuma estiver configurada, o bot enviará apenas os resumos originais do RSS.
+#### 4.4 - NEWS_API_KEY (Opcional - Recomendado)
+A NewsAPI permite buscar notícias mais recentes e relevantes via API, em vez de depender apenas de RSS:
+1. Acesse: https://newsapi.org/register
+2. Crie uma conta gratuita e copie sua API Key
+3. No GitHub, adicione mais um secret
+4. **Name**: `NEWS_API_KEY`
+5. **Secret**: Cole a API key da NewsAPI
+6. Clique em **Add secret**
+
+> **💡 Dica**: Configure pelo menos uma das APIs de IA (Perplexity ou Gemini) para obter resumos inteligentes. Se a `NEWS_API_KEY` for configurada, o bot terá acesso a uma gama muito maior de fontes.
 
 📖 **[Guia completo de configuração da Perplexity](PERPLEXITY_SETUP.md)**  
 📖 **[Guia completo de configuração do Gemini](GEMINI_SETUP.md)**

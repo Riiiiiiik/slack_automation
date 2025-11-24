@@ -13,6 +13,7 @@ WEEKLY_FEEDS = {
     0: {  # Segunda-feira - Filosofia
         "theme": "🧠 Filosofia",
         "emoji": "🧠",
+        "keywords": "philosophy OR ethics OR metaphysics",
         "feeds": [
             "https://dailynous.com/feed/",
             "https://aeon.co/feed.rss",
@@ -26,6 +27,7 @@ WEEKLY_FEEDS = {
     1: {  # Terça-feira - Finanças & Hedge Funds
         "theme": "💰 Finanças & Hedge Funds",
         "emoji": "💰",
+        "keywords": "hedge funds OR financial markets OR investment strategy",
         "feeds": [
             "https://www.ft.com/rss/home",
             "https://www.bloomberg.com/feed/podcast/etf-iq.xml",
@@ -39,6 +41,7 @@ WEEKLY_FEEDS = {
     2: {  # Quarta-feira - Ciências Sociais
         "theme": "👥 Ciências Sociais",
         "emoji": "👥",
+        "keywords": "sociology OR anthropology OR social psychology",
         "feeds": [
             "https://theconversation.com/global/topics/sociology-76/articles.atom",
             "https://www.sciencedaily.com/rss/mind_brain/psychology.xml",
@@ -51,6 +54,7 @@ WEEKLY_FEEDS = {
     3: {  # Quinta-feira - Alta Gastronomia & Culinária
         "theme": "🍽️ Alta Gastronomia & Culinária",
         "emoji": "🍽️",
+        "keywords": "fine dining OR gastronomy OR culinary arts OR michelin star",
         "feeds": [
             "https://www.seriouseats.com/feed",
             "https://www.bonappetit.com/feed/rss",
@@ -64,6 +68,7 @@ WEEKLY_FEEDS = {
     4: {  # Sexta-feira - Ciência em Geral
         "theme": "🔬 Ciência em Geral",
         "emoji": "🔬",
+        "keywords": "scientific research OR physics OR biology OR space exploration",
         "feeds": [
             "https://www.nature.com/nature.rss",
             "https://www.sciencemag.org/rss/news_current.xml",
@@ -77,6 +82,7 @@ WEEKLY_FEEDS = {
     5: {  # Sábado - Diversos
         "theme": "🌍 Tópicos Diversos",
         "emoji": "🌍",
+        "keywords": "world news OR technology OR culture OR innovation",
         "feeds": [
             "https://www.theguardian.com/world/rss",
             "https://www.bbc.com/news/rss.xml",
@@ -90,6 +96,7 @@ WEEKLY_FEEDS = {
     6: {  # Domingo - Diversos
         "theme": "🎨 Arte, Cultura & Diversos",
         "emoji": "🎨",
+        "keywords": "contemporary art OR literature OR cultural criticism",
         "feeds": [
             "https://www.artforum.com/rss.xml",
             "https://hyperallergic.com/feed/",
@@ -105,7 +112,7 @@ WEEKLY_FEEDS = {
 HISTORY_FILE = "history.json"
 
 class DailyReporter:
-    def __init__(self, webhook_url, gemini_api_key=None, perplexity_api_key=None):
+    def __init__(self, webhook_url, gemini_api_key=None, perplexity_api_key=None, news_api_key=None):
         # Force UTF-8 for Windows console
         import sys
         if sys.platform == 'win32':
@@ -118,6 +125,13 @@ class DailyReporter:
         self.tz_BR = pytz.timezone('America/Sao_Paulo')
         self.history = self.load_history()
         
+        # Initialize NewsAPI
+        self.news_api_key = news_api_key
+        if self.news_api_key:
+            print("✅ NewsAPI configurada com sucesso!")
+        else:
+            print("⚠️ NewsAPI key não fornecida. Usando modo RSS.")
+
         # Initialize Perplexity API
         self.perplexity_api_key = perplexity_api_key
         if self.perplexity_api_key:
@@ -305,34 +319,82 @@ Resumo em Português:"""
         # If all AI methods fail, return RSS summary
         return f"{article.get('summary', 'Sem resumo disponível')}\n\n⚠️ *Resumo gerado por IA não disponível*"
 
+    def fetch_from_newsapi(self, keywords):
+        """Fetch articles using NewsAPI"""
+        if not self.news_api_key:
+            return []
+            
+        print(f"   📡 Buscando na NewsAPI por: {keywords}")
+        url = "https://newsapi.org/v2/everything"
+        
+        params = {
+            'q': keywords,
+            'language': 'en', # Most high quality sources are in English
+            'sortBy': 'popularity',
+            'pageSize': 20,
+            'apiKey': self.news_api_key
+        }
+        
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            articles = []
+            for item in data.get('articles', []):
+                # Skip removed articles
+                if item['title'] == '[Removed]':
+                    continue
+                    
+                articles.append({
+                    "title": item['title'],
+                    "link": item['url'],
+                    "source": item['source']['name'],
+                    "summary": item['description'] or "No description"
+                })
+            
+            return articles
+        except Exception as e:
+            print(f"   ⚠️ Erro na NewsAPI: {e}")
+            return []
+
     def collect_data(self):
         # Get current day of week (0=Monday, 6=Sunday)
         today = datetime.now(self.tz_BR).weekday()
         day_config = WEEKLY_FEEDS[today]
         
         print(f"📅 Tema de hoje: {day_config['theme']}")
-        print("📡 Buscando feeds RSS...")
+        print(f"� Tema de hoje: {day_config['theme']}")
         all_entries = []
         
-        for feed_url in day_config['feeds']:
-            try:
-                print(f"   - Lendo: {feed_url}")
-                feed = feedparser.parse(feed_url)
-                for entry in feed.entries:
-                    # Clean up RSS summary (remove HTML tags)
-                    raw_summary = entry.get('summary', 'No summary available')
-                    soup = BeautifulSoup(raw_summary, 'html.parser')
-                    clean_summary = soup.get_text().strip()
+        # Try NewsAPI first if available
+        if self.news_api_key and 'keywords' in day_config:
+            print("📡 Usando NewsAPI para busca...")
+            api_entries = self.fetch_from_newsapi(day_config['keywords'])
+            all_entries.extend(api_entries)
+            
+        # If no API results (or no key), fall back to RSS
+        if not all_entries:
+            print("📡 Buscando feeds RSS (Fallback)...")
+            for feed_url in day_config['feeds']:
+                try:
+                    print(f"   - Lendo: {feed_url}")
+                    feed = feedparser.parse(feed_url)
+                    for entry in feed.entries:
+                        # Clean up RSS summary (remove HTML tags)
+                        raw_summary = entry.get('summary', 'No summary available')
+                        soup = BeautifulSoup(raw_summary, 'html.parser')
+                        clean_summary = soup.get_text().strip()
 
-                    # Basic normalization
-                    all_entries.append({
-                        "title": entry.title,
-                        "link": entry.link,
-                        "source": feed.feed.get('title', 'Unknown Source'),
-                        "summary": clean_summary[:300] + "..."
-                    })
-            except Exception as e:
-                print(f"   ⚠️ Erro ao ler {feed_url}: {e}")
+                        # Basic normalization
+                        all_entries.append({
+                            "title": entry.title,
+                            "link": entry.link,
+                            "source": feed.feed.get('title', 'Unknown Source'),
+                            "summary": clean_summary[:300] + "..."
+                        })
+                except Exception as e:
+                    print(f"   ⚠️ Erro ao ler {feed_url}: {e}")
 
         # Filter out already sent articles
         new_entries = [e for e in all_entries if e['link'] not in self.history]
@@ -440,5 +502,6 @@ if __name__ == "__main__":
     webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
     gemini_api_key = os.environ.get('GEMINI_API_KEY')
     perplexity_api_key = os.environ.get('PERPLEXITY_API_KEY')
-    reporter = DailyReporter(webhook_url, gemini_api_key, perplexity_api_key)
+    news_api_key = os.environ.get('NEWS_API_KEY')
+    reporter = DailyReporter(webhook_url, gemini_api_key, perplexity_api_key, news_api_key)
     reporter.send()
