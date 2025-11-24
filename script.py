@@ -223,12 +223,17 @@ Forneça o resumo em português brasileiro, de forma clara e acessível."""
                 print(f"   - Lendo: {feed_url}")
                 feed = feedparser.parse(feed_url)
                 for entry in feed.entries:
+                    # Clean up RSS summary (remove HTML tags)
+                    raw_summary = entry.get('summary', 'No summary available')
+                    soup = BeautifulSoup(raw_summary, 'html.parser')
+                    clean_summary = soup.get_text().strip()
+
                     # Basic normalization
                     all_entries.append({
                         "title": entry.title,
                         "link": entry.link,
                         "source": feed.feed.get('title', 'Unknown Source'),
-                        "summary": entry.get('summary', 'No summary available')[:200] + "..."
+                        "summary": clean_summary[:300] + "..."
                     })
             except Exception as e:
                 print(f"   ⚠️ Erro ao ler {feed_url}: {e}")
