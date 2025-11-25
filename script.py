@@ -85,7 +85,7 @@ WEEKLY_FEEDS = {
 }
 
 class DailyReporter:
-    def __init__(self, webhook_url, gemini_api_key=None, perplexity_api_key=None, news_api_key=None):
+    def __init__(self, webhook_url, gemini_api_key=None, perplexity_api_key=None):
         import sys
         if sys.platform == 'win32':
             try:
@@ -101,12 +101,6 @@ class DailyReporter:
         self.cursor = self.conn.cursor()
         self.cursor.execute('CREATE TABLE IF NOT EXISTS sent_articles (link TEXT PRIMARY KEY, date TEXT)')
         self.conn.commit()
-        
-        self.news_api_key = news_api_key
-        if self.news_api_key:
-            print("✅ NewsAPI configurada!")
-        else:
-            print("⚠️ NewsAPI key não fornecida.")
 
         self.perplexity_api_key = perplexity_api_key
         if self.perplexity_api_key:
@@ -238,74 +232,37 @@ Resumo (500 caracteres):"""
 
         return (article.get('summary', 'Sem resumo disponível'))[:500]
 
-    def fetch_from_newsapi(self, keywords):
-        """Busca artigos na NewsAPI"""
-        if not self.news_api_key:
-            return []
 
-        print(f"   📡 NewsAPI: {keywords[:50]}...")
-        url = "https://newsapi.org/v2/everything"
-        
-        params = {
-            'q': keywords,
-            'language': 'en',
-            'sortBy': 'popularity',
-            'pageSize': 20,
-            'apiKey': self.news_api_key
-        }
-        
-        try:
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            
-            return [
-                {
-                    "title": item['title'],
-                    "link": item['url'],
-                    "source": item['source']['name'],
-                    "summary": item['description'] or ""
-                }
-                for item in data.get('articles', [])
-                if item['title'] != '[Removed]'
-            ]
-        except Exception as e:
-            print(f"   ⚠️ Erro NewsAPI: {e}")
-            return []
 
     def fetch_from_rss(self, feeds_list):
-        """MELHORIA 3: Busca em feeds RSS como fallback"""
+        """Busca artigos em feeds RSS"""
         print(f"   📡 Buscando em feeds RSS...")
         articles = []
         for feed_url in feeds_list:
             try:
+                print(f"      - {feed_url[:50]}...")
                 feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:2]:  # 2 mais recentes de cada
+                for entry in feed.entries[:3]:  # 3 mais recentes de cada feed
                     articles.append({
                         "title": entry.title,
                         "link": entry.link,
                         "source": feed.feed.get('title', 'RSS'),
                         "summary": getattr(entry, 'summary', '')
                     })
-            except:
+            except Exception as e:
+                print(f"      ⚠️ Erro no feed: {e}")
                 continue
         return articles
 
     def collect_data(self):
-        """MELHORIA 3: Lógica híbrida NewsAPI + RSS"""
+        """Busca artigos apenas dos feeds RSS configurados"""
         today = datetime.now(self.tz_BR).weekday()
         cfg = WEEKLY_FEEDS[today]
         
         print(f"📅 Tema: {cfg['theme']}")
         
-        # 1. Tenta NewsAPI
-        articles = self.fetch_from_newsapi(cfg["keywords"])
-        
-        # 2. Se tiver menos de 5, completa com RSS
-        if len(articles) < 5:
-            print(f"   ⚠️ Poucos artigos da NewsAPI ({len(articles)}), complementando com RSS...")
-            rss_articles = self.fetch_from_rss(cfg["feeds"])
-            articles.extend(rss_articles)
+        # Busca apenas em RSS
+        articles = self.fetch_from_rss(cfg["feeds"])
         
         # Filtra já enviados usando SQLite
         new = [a for a in articles if not self.url_already_sent(a["link"])]
@@ -402,7 +359,6 @@ if __name__ == "__main__":
     webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
     perplexity_api_key = os.environ.get("PERPLEXITY_API_KEY")
-    news_api_key = os.environ.get("NEWS_API_KEY")
     
-    reporter = DailyReporter(webhook_url, gemini_api_key, perplexity_api_key, news_api_key)
+    reporter = DailyReporter(webhook_url, gemini_api_key, perplexity_api_key)
     reporter.send()
